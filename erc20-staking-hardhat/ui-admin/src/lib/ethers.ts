@@ -26,3 +26,18 @@ export function getTokenContract(signerOrProvider: any, tokenAddress: string) {
 export function getStakingContract(signerOrProvider: any, stakingAddress: string) {
   return new Contract(stakingAddress, stakingAbi, signerOrProvider);
 }
+
+export async function setApr(signer: any, stakingAddr: string, bps: number) {
+  const staking = getStakingContract(signer, stakingAddr);
+  const tx = await staking.setAPR(bps);
+  await tx.wait();
+}
+
+export async function fundRewards(signer: any, stakingAddr: string, tokenAddr: string, amountHuman: string) {
+  const token = getTokenContract(signer, tokenAddr);
+  const staking = getStakingContract(signer, stakingAddr);
+  const amt = (await import("ethers")).parseUnits(amountHuman, 18);
+  // Approve then fund
+  await (await token.approve(stakingAddr, amt)).wait();
+  await (await staking.fundRewards(amt)).wait();
+}
