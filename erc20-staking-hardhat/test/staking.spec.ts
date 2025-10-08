@@ -57,9 +57,10 @@ describe("Staking", () => {
     await (await token.mint(await deployer.getAddress(), toWei("10000"))).wait();
 
     // Approvals
-    await (await token.connect(alice).approve(await staking.getAddress(), toWei("1e12"))).wait();
-    await (await token.connect(bob).approve(await staking.getAddress(), toWei("1e12"))).wait();
-    await (await token.connect(deployer).approve(await staking.getAddress(), toWei("1e12"))).wait();
+    const INF = ethers.MaxUint256; // bigint
+    await (await token.connect(alice).approve(await staking.getAddress(), INF)).wait();
+    await (await token.connect(bob).approve(await staking.getAddress(), INF)).wait();
+    await (await token.connect(deployer).approve(await staking.getAddress(), INF)).wait();
   });
 
   it("single staker accrues ~APR rewards over time", async () => {
