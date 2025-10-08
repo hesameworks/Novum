@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { connectWallet, getTokenContract, getStakingContract } from "./lib/ethers";
+import { setApr, fundRewards } from "./lib/ethers";
 
 const cfg = {
   network: import.meta.env.VITE_NETWORK,
@@ -19,11 +20,17 @@ type Conn = {
 export default function App() {
   const [conn, setConn] = useState<Conn>({});
   const [busy, setBusy] = useState(false);
+  const [aprBps, setAprBps] = useState("1200");
+  const [fundAmt, setFundAmt] = useState("500");
+
+  // Keep signer/instances for after connect
+  const [signer, setSigner] = useState<any>(null);
 
   async function onConnect() {
     try {
       setBusy(true);
       const { provider, signer, address } = await connectWallet();
+      setSigner(signer);
       const net = await provider.getNetwork();
 
       if (!cfg.token) throw new Error("VITE_TOKEN_ADDRESS is empty");
@@ -36,10 +43,7 @@ export default function App() {
       if (cfg.staking) {
         const staking = getStakingContract(signer, cfg.staking);
         const totalStaked = await staking.totalStaked?.().catch(() => null);
-        if (totalStaked) {
-          // NOTE: Token has 18 decimals; this is a quick division for display only.
-          totalStakedDisplay = (Number(totalStaked) / 1e18).toString();
-        }
+        if (totalStaked) totalStakedDisplay = (Number(totalStaked) / 1e18).toString();
       }
 
       setConn({
@@ -50,6 +54,34 @@ export default function App() {
         paused: !!paused,
         totalStaked: totalStakedDisplay,
       });
+    } catch (e: any) {
+      alert(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onSetApr() {
+    if (!signer) return alert("Connect wallet first.");
+    if (!cfg.staking) return alert("Missing VITE_STAKING_ADDRESS");
+    try {
+      setBusy(true);
+      await setApr(signer, cfg.staking, Number(aprBps));
+      alert("APR updated!");
+    } catch (e: any) {
+      alert(e.message || String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onFund() {
+    if (!signer) return alert("Connect wallet first.");
+    if (!cfg.staking || !cfg.token) return alert("Missing addresses in .env.local");
+    try {
+      setBusy(true);
+      await fundRewards(signer, cfg.staking, cfg.token, fundAmt);
+      alert("Rewards funded!");
     } catch (e: any) {
       alert(e.message || String(e));
     } finally {
@@ -73,13 +105,38 @@ export default function App() {
           <div><b>Account:</b> {conn.account}</div>
           <div><b>ChainId:</b> {conn.chainId}</div>
           <div><b>Token:</b> {conn.tokenName} ({conn.tokenSymbol})</div>
-          <div><b>Paused:</b> {String(conn.paused)}</div>
           <div><b>Total Staked:</b> {conn.totalStaked}</div>
         </div>
       )}
 
       <hr style={{ margin: "24px 0" }} />
 
+      {/* --- Admin: Set APR --- */}
+      <div style={{ marginBottom: 16 }}>
+        <h3>Set APR (bps)</h3>
+        <input
+          type="number"
+          value={aprBps}
+          onChange={(e) => setAprBps(e.target.value)}
+          placeholder="e.g., 1200"
+          style={{ padding: 8, width: 200, marginRight: 8 }}
+        />
+        <button onClick={onSetApr} disabled={busy}>Update APR</button>
+      </div>
+
+      {/* --- Admin: Fund Rewards --- */}
+      <div style={{ marginBottom: 16 }}>
+        <h3>Fund Rewards (tokens)</h3>
+        <input
+          value={fundAmt}
+          onChange={(e) => setFundAmt(e.target.value)}
+          placeholder="e.g., 500"
+          style={{ padding: 8, width: 200, marginRight: 8 }}
+        />
+        <button onClick={onFund} disabled={busy}>Fund</button>
+      </div>
+
+      <hr style={{ margin: "24px 0" }} />
       <p style={{ opacity: 0.7 }}>
         Configure addresses via <code>.env.local</code>: <code>VITE_TOKEN_ADDRESS</code>, <code>VITE_STAKING_ADDRESS</code>
       </p>
