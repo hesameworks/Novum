@@ -4,7 +4,15 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc -p .",
+    "clean": "rm -rf dist artifacts cache coverage typechain-types abi",
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "coverage": "hardhat coverage",
+    "gas": "HARDHAT_GAS_REPORT=true hardhat test",
+    "deploy:sepolia": "hardhat run --network sepolia deploy/00_deploy.ts",
+    "deploy:bsctest": "hardhat run --network bsctest deploy/00_deploy.ts",
+    "typechain": "hardhat typechain"
   },
   "keywords": [],
   "author": "",
